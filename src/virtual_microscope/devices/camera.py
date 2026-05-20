@@ -42,8 +42,8 @@ class SimCameraDevice(CameraDevice):
         return self._exposure
 
     def set_exposure(self, exposure: float) -> None:
-        self._exposure = exposure
-        self.core.events.exposureChanged.emit(self.get_label(), exposure)
+        self._exposure = float(exposure)
+        self.core.events.exposureChanged.emit(self.get_label(), float(exposure))
 
     def _sensor_hw(self) -> tuple[int, int]:
         """Full (height, width) of the simulated sensor, ignoring any ROI."""

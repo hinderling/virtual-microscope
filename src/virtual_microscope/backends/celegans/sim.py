@@ -53,6 +53,7 @@ class CelegansSim(SimBase):
             seed=seed, internal_scale=1, fixed_dt=fixed_dt,
             auto_step=True, snaps_per_step=1,
             mode_map={
+                ("Electra1(402/454)", "CYAN"): 0,      # DIC brightfield
                 ("TagGFP2(483/506)", "GREEN"): 1,      # GFP-pharynx
                 ("mScarlet3(569/582)", "ORANGE"): 2,   # mCherry-body
             },

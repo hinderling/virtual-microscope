@@ -14,7 +14,9 @@ class CellCycleNormal(NormalCell):
                  death_time: Optional[float] = None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # This cell has no fluorescence
+        # Cycle cells are always fully labeled (nucleus + membrane visible in all channels)
+        self.has_nucleus_marker = True
+        self.has_membrane_marker = True
         self.nucleus_fluorescence = 0.0
         self.membrane_fluorescence = np.zeros(self.vertices)
 
@@ -41,13 +43,13 @@ class CellCycleNormal(NormalCell):
             self.n_div: int = self._initial_number_division()
             
         self.is_dying: bool = self._initialization_apoptosis()
-        self.time_tot_cycle: float = 660.0 # in simulation units (seconds)
-        # Time table defines END times for each phase (cumulative)
-        # G1: 0-240, S: 240-360, G2: 360-480, M: 480-550
-        self.time_table_cycle: dict[str, float] = {'G1': 240.0, 'S': 360.0, 'G2': 480.0} # in seconds
-        # Mitosis phases: cumulative times from start of M phase (480s)
-        # Prophase: 480-495, Metaphase: 495-510, Anaphase: 510-525, Telophase: 525-540, Cytokinesis: 540-550
-        self.time_table_mitosis: dict[str, float] = {'Prophase': 495.0, 'Metaphase': 510.0, 'Anaphase': 525.0, 'Telophase': 540.0, 'Cytokinesis': 550.0}
+        # At tick_hz=10, dt=0.005: 0.05 sim-s per real-s
+        # Full cycle = 27.0 sim-s = 9 min real; M total = 3.0 sim-s = 1 min real
+        self.time_tot_cycle: float = 27.0
+        # G1:S:G2 ratio 2:1:1 over 24 sim-s; cumulative end times
+        self.time_table_cycle: dict[str, float] = {'G1': 12.0, 'S': 18.0, 'G2': 24.0}
+        # Mitosis: 5 equal phases over 3 sim-s (0.6 each); cumulative from cycle start
+        self.time_table_mitosis: dict[str, float] = {'Prophase': 24.6, 'Metaphase': 25.2, 'Anaphase': 25.8, 'Telophase': 26.4, 'Cytokinesis': 27.0}
         # add random start time point for each cell
         if initial_time is not None:
             self.current_time_life: float = float(initial_time)
@@ -74,8 +76,9 @@ class CellCycleNormal(NormalCell):
         else:
             self.apoptosis_death_phase: Literal['Shrinkage', 'Blebbing', 'Apoptotic bodies', 'Phagocytosis'] = 'Shrinkage'
 
-        self.time_table_apoptosis: dict[str, float] = {'Shrinkage': 20.0, 'Blebbing': 40.0, 'Apoptotic bodies': 50.0, 'Phagocytosis': 60.0}
-        self.max_death_timer: float = 60.0
+        # Apoptosis: 3.0 sim-s total = 1 min real; proportional phase durations
+        self.time_table_apoptosis: dict[str, float] = {'Shrinkage': 1.0, 'Blebbing': 2.0, 'Apoptotic bodies': 2.5, 'Phagocytosis': 3.0}
+        self.max_death_timer: float = 3.0
         self.remove_this_cell = False
         # Transition guards to prevent multiple transitions at same threshold
         self._last_transitioned_cycle_state: Optional[str] = None
@@ -164,39 +167,35 @@ class CellCycleNormal(NormalCell):
         else:
             return False
         
-    def _initial_random_time_life(self) -> int:
+    def _initial_random_time_life(self) -> float:
         """Randomly select time life of the cell (in seconds)"""
         cell_cycle_state = self.cell_cycle_state
-        cell_mitosis_state = self.cell_mitosis_state # not in M, then this is None
+        cell_mitosis_state = self.cell_mitosis_state
 
-        # time range of each state (in seconds)
-        # G1(240): 0 -> 240
-        # S(360): 240 -> 360
-        # G2(480): 360 -> 480
-        # M(660): 480 -> 550 (with phases)
+        # G1: 0-12, S: 12-18, G2: 18-24, M phases: 24-27
         match cell_cycle_state:
             case 'G1':
-                return random.randint(0, 240)
+                return random.uniform(0, 12.0)
             case 'S':
-                return random.randint(240, 360)
+                return random.uniform(12.0, 18.0)
             case 'G2':
-                return random.randint(360, 480)
-            case 'M': # M
+                return random.uniform(18.0, 24.0)
+            case 'M':
                 match cell_mitosis_state:
                     case 'Prophase':
-                        return random.randint(480, 495)
+                        return random.uniform(24.0, 24.6)
                     case 'Metaphase':
-                        return random.randint(495, 510)
+                        return random.uniform(24.6, 25.2)
                     case 'Anaphase':
-                        return random.randint(510, 525)
+                        return random.uniform(25.2, 25.8)
                     case 'Telophase':
-                        return random.randint(525, 540)
-                    case 'Cytokinesis':  # Cytokinesis or Interphase
-                        return random.randint(540, 550)
+                        return random.uniform(25.8, 26.4)
+                    case 'Cytokinesis':
+                        return random.uniform(26.4, 27.0)
                     case _:
-                        return -1 # undefined
+                        return 0.0
             case _:
-                return -1 # undefined
+                return 0.0
 
     def _change_state(self) -> None:
         """Change the state of the cell. Only transitions once per state."""

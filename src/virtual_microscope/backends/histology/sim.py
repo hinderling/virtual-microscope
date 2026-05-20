@@ -173,6 +173,7 @@ class HistologySim(SimBase):
             viewport_width=viewport_width, viewport_height=viewport_height,
             seed=seed, internal_scale=internal_scale,
             mode_map={
+                ("Electra1(402/454)", "CYAN"): 0,      # H&E composite (brightfield)
                 ("SCFP2(434/474)", "UV"): 1,           # hematoxylin
                 ("obeYFP(514/528)", "GREEN"): 2,       # eosin
             },

@@ -202,14 +202,11 @@ class CellCycleRenderer:
         center_for_chromatin = np.array(cell.center) - np.array(camera_offset)
 
         if cell.cell_mitosis_state == 'Interphase' and cell.cell_cycle_state == 'G1':
-            cv2.circle(cell_img, nucleus_pos, nucleus_radius, (150, 60, 60), -1, lineType=cv2.LINE_AA)
-            draw_smooth_chromatin(cell_img, chromatin_pts_screen, num_strands=20)
+            cv2.circle(cell_img, nucleus_pos, nucleus_radius, (240, 240, 240), -1, lineType=cv2.LINE_AA)
         elif cell.cell_mitosis_state == 'Interphase' and cell.cell_cycle_state == 'S':
-            cv2.circle(cell_img, nucleus_pos, nucleus_radius, (150, 60, 60), -1, lineType=cv2.LINE_AA)
-            draw_smooth_chromatin(cell_img, chromatin_pts_screen, num_strands=40)
+            cv2.circle(cell_img, nucleus_pos, nucleus_radius, (240, 240, 240), -1, lineType=cv2.LINE_AA)
         elif cell.cell_mitosis_state == 'Interphase' and cell.cell_cycle_state == 'G2':
-            cv2.circle(cell_img, nucleus_pos, nucleus_radius, (150, 60, 60), -1, lineType=cv2.LINE_AA)
-            draw_smooth_chromatin(cell_img, chromatin_pts_screen, num_strands=40)
+            cv2.circle(cell_img, nucleus_pos, nucleus_radius, (240, 240, 240), -1, lineType=cv2.LINE_AA)
         elif cell.cell_mitosis_state == 'Prophase':
             draw_condensed_chromatin(cell_img, center_for_chromatin, cell.base_r,
                                     (0, 0), self.master_shape, num_chromosomes=10)
@@ -224,12 +221,17 @@ class CellCycleRenderer:
                                           self.master_shape, num_chromosomes=10)
             pole_offset = int(cell_radius * 0.5)
             cv2.circle(cell_img, (nucleus_pos[0], nucleus_pos[1] - pole_offset),
-                       int(nucleus_radius * 0.7), (150, 60, 60), -1, lineType=cv2.LINE_AA)
+                       int(nucleus_radius * 0.7), (240, 240, 240), -1, lineType=cv2.LINE_AA)
             cv2.circle(cell_img, (nucleus_pos[0], nucleus_pos[1] + pole_offset),
-                       int(nucleus_radius * 0.7), (150, 60, 60), -1, lineType=cv2.LINE_AA)
+                       int(nucleus_radius * 0.7), (240, 240, 240), -1, lineType=cv2.LINE_AA)
         elif cell.cell_mitosis_state == 'Cytokinesis':
-            draw_condensed_chromatin_polar(cell_img, center_for_chromatin, cell.base_r,
-                                          self.master_shape, num_chromosomes=10)
+            # Nuclear envelope has reformed — show two decondensed nuclei, not condensed chromosomes
+            pole_offset = int(cell_radius * 0.5)
+            nuc_r = int(0.4 * cell_radius * 0.7)
+            cv2.circle(cell_img, (nucleus_pos[0], nucleus_pos[1] - pole_offset),
+                       nuc_r, (240, 240, 240), -1, lineType=cv2.LINE_AA)
+            cv2.circle(cell_img, (nucleus_pos[0], nucleus_pos[1] + pole_offset),
+                       nuc_r, (240, 240, 240), -1, lineType=cv2.LINE_AA)
 
         if kernel_size > 0:
             cell_img = cv2.GaussianBlur(cell_img, (kernel_size, kernel_size), kernel_size / 3.0)
@@ -274,14 +276,14 @@ class CellCycleRenderer:
                                             self.master_shape, num_chromosomes=10)
             mask = cell_img[:, :, 0] > 0
             cell_img[mask] = [255, 220, 140]
-        elif cell.cell_mitosis_state in ('Anaphase', 'Cytokinesis'):
-            # Separated chromosome masses
+        elif cell.cell_mitosis_state == 'Anaphase':
+            # Separated chromosome masses moving to poles
             draw_condensed_chromatin_polar(cell_img, center_for_chromatin, cell.base_r,
                                           self.master_shape, num_chromosomes=10)
             mask = cell_img[:, :, 0] > 0
             cell_img[mask] = [255, 200, 120]
-        elif cell.cell_mitosis_state == 'Telophase':
-            # Two reforming nuclei
+        elif cell.cell_mitosis_state in ('Telophase', 'Cytokinesis'):
+            # Two reforming nuclei with decondensed chromatin (nuclear envelope has reformed)
             pole_offset = int(cell_radius * 0.5)
             nuc_r = int(nucleus_radius * 0.7)
             cv2.circle(cell_img, (nucleus_pos[0], nucleus_pos[1] - pole_offset),
@@ -350,11 +352,11 @@ class CellCycleRenderer:
             self._draw_smooth_cell(cell_img, center_screen, vertices,
                                 (0, 0, 0), thickness=2)
 
-            # Draw nucleus with (dark center)
+            # Draw nucleus — bright color inverts to dark in _apply_brightfield_look
             nucleus_pos = tuple(center_screen.astype(int))
             nucleus_radius = int(0.4 * cell_radius)
 
-            cv2.circle(cell_img, nucleus_pos, nucleus_radius, (150, 60, 60), -1, lineType=cv2.LINE_AA)
+            cv2.circle(cell_img, nucleus_pos, nucleus_radius, (240, 240, 240), -1, lineType=cv2.LINE_AA)
 
             # Apply blur based on focal plane
             if kernel_size > 0:
@@ -443,6 +445,7 @@ class CellCycleRenderer:
         img = np.clip(img, 0, 255)
         img = img * self.brightness
         img = np.clip(img, 0, 255).astype(np.uint8)
+        img = 255 - img  # invert: bright background (transmitted light), dark cells
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         return img
 

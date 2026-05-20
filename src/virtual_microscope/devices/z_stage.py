@@ -1,4 +1,4 @@
-from pymmcore_plus.experimental.unicore import StageDevice
+from pymmcore_plus.experimental.unicore import StageDevice, pymm_property
 from pymmcore_plus import FocusDirection
 import virtual_microscope.engine.simulation_bridge as bridge_module
 
@@ -12,6 +12,14 @@ class SimZStageDevice(StageDevice):
         self._direction = 0
         #self._microscope_sim = microscope_sim
         self.bridge = bridge_module.GLOBAL_BRIDGE
+
+    @pymm_property(name="Position")
+    def position(self) -> float:
+        return self._z_current
+
+    @position.setter
+    def position(self, val: float) -> None:
+        self.set_position_um(float(val))
 
     def home(self) -> None:
         self._z_current=0.0

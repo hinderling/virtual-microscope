@@ -355,6 +355,8 @@ class OpticalPipeline:
 
         f = img.astype(np.float32)
 
+        exposure_ms = float(exposure_ms)
+
         # Dark current: adds baseline proportional to exposure
         if dark_current > 0:
             dc = dark_current * (exposure_ms / 100.0)

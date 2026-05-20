@@ -136,6 +136,12 @@ class RealtimeEngine:
                 dt = min(dt, self._max_dt)
             with self._lock:
                 try:
+                    # Continuously re-apply SLM mask so stimulation persists
+                    # between agent snaps (otherwise friction damps velocity away)
+                    if (self._bridge is not None
+                            and self._bridge._current_slm_mask is not None
+                            and hasattr(self._sim, '_handle_mask')):
+                        self._sim._handle_mask(self._bridge._current_slm_mask)
                     step_fn(dt)
                     # Tick SLM processor so stimulation decays
                     if (self._bridge is not None

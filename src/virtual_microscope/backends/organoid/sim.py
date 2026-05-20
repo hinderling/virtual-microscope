@@ -44,8 +44,9 @@ class OrganoidSim(SimBase):
             seed=seed, internal_scale=internal_scale, fixed_dt=1.0,
             auto_step=False, snaps_per_step=1,
             mode_map={
-                ("SCFP2(434/474)", "UV"): 1,
-                ("TagGFP2(483/506)", "GREEN"): 2,
+                ("Electra1(402/454)", "CYAN"): 0,      # DIC brightfield
+                ("SCFP2(434/474)", "UV"): 1,            # DAPI nuclei
+                ("TagGFP2(483/506)", "GREEN"): 2,       # E-cadherin junctions
             },
         )
 

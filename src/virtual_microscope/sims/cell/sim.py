@@ -23,15 +23,17 @@ class ScatteredCellSim(SimBase):
                  n_cells: int = 240, cell_type: str = "optogenetic",
                  viewport_width: int = 512, viewport_height: int = 512,
                  base_radius: float = 20.0, seed: int = 0,
-                 cell_mix: Optional[dict] = None, concentration: float = 0.01, drug_type: Literal["growth", "mobility", "apoptosis"] = "growth"):
+                 cell_mix: Optional[dict] = None, concentration: float = 0.01, drug_type: Literal["growth", "mobility", "apoptosis"] = "growth",
+                 brownian_d: float = 15.0):
         super().__init__(
             width=width, height=height,
             viewport_width=viewport_width, viewport_height=viewport_height,
             seed=seed, internal_scale=1,
             fixed_dt=0.005,
             mode_map={
-                ("SCFP2(434/474)", "UV"): 1,           # DAPI
-                ("mScarlet3(569/582)", "ORANGE"): 2,   # membrane
+                ("Electra1(402/454)", "CYAN"): 0,       # brightfield / DIC
+                ("SCFP2(434/474)", "UV"): 1,            # DAPI
+                ("mScarlet3(569/582)", "ORANGE"): 2,    # membrane
             },
         )
 
@@ -41,6 +43,7 @@ class ScatteredCellSim(SimBase):
         self.cell_mix = cell_mix
         self.concentration = concentration
         self.drug_type = drug_type
+        self.brownian_d = brownian_d
         # Initialize components
         self.renderer = CellCycleRenderer(viewport_width, viewport_height)
         self.spatial_grid = SpatialGrid(width, height, base_radius * 3)
@@ -230,6 +233,7 @@ class ScatteredCellSim(SimBase):
             self.centers, self.velocities, self.radii, self.angles,
             self.base_radii, self.areas, self.width, self.height, dt,
             step_count=self._step_count,
+            brownian_d=self.brownian_d,
         )
         self._step_count += 1
 
@@ -370,28 +374,26 @@ class ScatteredCellSim(SimBase):
             
 
     def _update_cell_fluorescence(self, cell: CellBase, mode: int) -> None:
-        """Update cell fluorescence base on mode"""
+        """Update cell fluorescence based on mode."""
         if isinstance(cell, NormalCell):
+            # NormalCell and subclasses (cycle, etc.): respect per-cell markers
             if mode == 0:
-                # Brightfield - no fluorescence visible
-                pass # Keep markes ans skip
+                pass  # keep markers, brightfield needs no fluorescence update
             elif mode == 1:
-                # Shows nucleus only if cell has marker
                 if not cell.has_nucleus_marker:
                     cell.nucleus_fluorescence = 0.0
             elif mode == 2:
-                # Show membrane only if cell has marker
                 if not cell.has_membrane_marker:
                     cell.membrane_fluorescence[:] = 0.0
-        
-        # For other types of cell (optogenetic/drug), always show fluorescence
-        if mode == 0:
-            cell.nucleus_fluorescence = 0.0
-            cell.membrane_fluorescence[:] = 0.0
-        elif mode == 1:
-            cell.nucleus_fluorescence = 1.0
-        elif mode == 2:
-            cell.membrane_fluorescence[:] = 1.0
+        else:
+            # Optogenetic / drug cells: always show fluorescence
+            if mode == 0:
+                cell.nucleus_fluorescence = 0.0
+                cell.membrane_fluorescence[:] = 0.0
+            elif mode == 1:
+                cell.nucleus_fluorescence = 1.0
+            elif mode == 2:
+                cell.membrane_fluorescence[:] = 1.0
 
 
     def get_visible_cells(self) -> Sequence[CellBase | CellCycleNormal]:

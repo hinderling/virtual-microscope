@@ -54,8 +54,8 @@ def update_cell_physics(center: np.ndarray, vel: np.ndarray, r: np.ndarray,
     center += vel * dt
     center = wrap_position(center, width, height)
 
-    # Apply friction
-    vel *= max(0.0, 1.0 - friction * dt)
+    # Apply friction (exponential decay avoids over-damping when friction*dt > 1)
+    vel *= np.exp(-friction * dt)
 
     # Membrane ruffling
     r += np.random.normal(0, ruffle_std * base_r, len(r))
